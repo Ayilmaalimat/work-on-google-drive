@@ -5,12 +5,17 @@ import gspread
 from googleapiclient.discovery import build
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
+import pandas as pd
 
-class GoogleAPI():
+class Api():
+    """ Basic class of API clients """
     def __init__(self):
+        """ Basic classes initialization """
+        self.API_NAME = 'drive'
+        self.API_VERSION = 'v3'
+        self.CLIENT_SECRET_FILE = 'credentials.json'
         self.SCOPES = ['https://www.googleapis.com/auth/drive',
-                    'https://www.googleapis.com/auth/spreadsheets']
-        self.secret_file = 'credentials.json'
+                        'https://www.googleapis.com/auth/spreadsheets']
 
     def auth(self):
         """ Authentication api with token or secret_file """
@@ -23,27 +28,13 @@ class GoogleAPI():
                 creds.refresh(Request())
             else:
                 flow = InstalledAppFlow.from_client_secrets_file(
-                    self.secret_file, self.SCOPES)
+                    self.CLIENT_SECRET_FILE, self.SCOPES)
                 creds = flow.run_local_server(port=0)
             with open('token.pickle', 'wb') as token:
                 pickle.dump(creds, token)
+
+        # registration services
         self.GS = gspread.authorize(creds)
-        self.DRIVE = build('drive', 'v3', credentials=creds)
-    
-    def create(self, name, path, service):
-        pass
-    
-    def read(self, path):
-        pass
+        self.DRIVE = build(self.API_NAME, self.API_VERSION, credentials=creds)
 
-    def update(self, name, id_data, new_param):
-        pass
-    
-    def delete(self, name, id_data):
-        pass
-
-    def download(self, name, id_data):
-        pass
-
-    def backup_files(self, name, id_data, times):
-        pass
+        return self
