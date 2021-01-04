@@ -147,11 +147,15 @@ class Gspread(Api):
         """ Parent classes initialization """
         super().__init__()
     
-    def create(self):
-        pass
+    def create(self, name):
+        sh = self.GS.create(name)
+        print(f"Create Complete! \nId = {sh.id}")
+        return sh.id
 
-    def read(self):
-        pass
+    def read(self, id_, sheet_id):
+        response = self.GS.open_by_key(id_).get_worksheet(sheet_id).get_all_values()
+        df = pd.DataFrame(response)
+        print(f"Вывод: \n{df}\n")
 
     def update(self):
         pass
