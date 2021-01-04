@@ -1,7 +1,7 @@
 from __future__ import print_function
 import pickle
-import os.path
 import gspread
+import os
 import io
 from googleapiclient.discovery import build
 from google_auth_oauthlib.flow import InstalledAppFlow
@@ -47,14 +47,14 @@ class GoogleAPI(Api):
         """ Parent classes initialization """
         super().__init__()
 
-    def create(self, name, parent):
+    def create(self, name):
         """ Create folder method """
         file_metadata = {
             'name': name,
             'mimeType': 'application/vnd.google-apps.folder',
-            'parent': parent,
         }
         request = self.DRIVE.files().create(body=file_metadata).execute()
+        print("Create Complete")
         return request['id']
     
     def read(self, name):
@@ -69,18 +69,77 @@ class GoogleAPI(Api):
         # Retrieve the existing parents to remove
         file = self.DRIVE.files().get(fileId=file_id,
                                         fields='parents').execute()
-        previous_parents = ",".join([parent["id"] for parent in file.get('parents')])
         # Move the file to the new folder
         file = self.DRIVE.files().update(fileId=file_id,
                                             addParents=folder_id,
-                                            removeParents=previous_parents,
                                             fields='id, parents').execute()
 
     def delete(self, file_id):
-        self.DRIVE.files().delete(file_id)
+        """ Delete data in Google Drive"""
+        self.DRIVE.files().delete(file_id).execute()
 
-    def copy(self, name, id_data, times):
-        pass
+    def download(self, fileId, destinationFolder):
+        """ Download directory files """
+        if not os.path.isdir(destinationFolder):
+            os.mkdir(path=destinationFolder)
+
+        results = self.DRIVE.files().list(
+            pageSize=300,
+            q="parents in '{0}'".format(fileId),
+            fields="files(id, name, mimeType)"
+            ).execute()
+
+        items = results.get('files', [])
+
+        for item in items:
+            itemName = item['name']
+            itemId = item['id']
+            itemType = item['mimeType']
+            filePath = destinationFolder + "/" + itemName
+
+            if itemType == 'application/vnd.google-apps.folder':
+                print("Stepping into folder: {0}".format(filePath))
+                self.download(itemId, filePath) # Recursive call
+            elif not itemType.startswith('application/'):
+                self.downloadFile(itemId, filePath)
+            else:
+                print("Unsupported file: {0}".format(itemName))
+    
+    def downloadFile(self, fileId, filePath):
+        print("-> Downloading file with id: {0} name: {1}".format(fileId, filePath))
+        request = self.DRIVE.files().get_media(fileId=fileId)
+        fh = io.FileIO(filePath, mode='wb')
+        
+        try:
+            downloader = MediaIoBaseDownload(fh, request, chunksize=1024*1024)
+
+            done = False
+            while done is False:
+                status, done = downloader.next_chunk(num_retries = 2)
+                if status:
+                    print("Download %d%%." % int(status.progress() * 100))
+            print("Download Complete!") 
+        finally:
+            fh.close()
+
+    def backupFiles(self, fileId, hours):
+        from apscheduler.schedulers.background import BackgroundScheduler
+        import time
+
+        self.download(fileId, time.strftime('%d %b %y'))
+
+        try:
+            scheduler = BackgroundScheduler()
+            scheduler.add_job(self.download, 'interval', 
+                    args=(fileId, time.strftime('%d %b %y')), 
+                    hours=hours)
+            scheduler.start()
+            print('Press Ctrl+{0} to exit'.format('Break' if os.name == 'nt' else 'C'))
+
+            while True:
+                time.sleep(2)
+        except:
+            scheduler.shutdown() 
 
 class Gspread(Api):
     """ Gspread Library Class of API clients """
