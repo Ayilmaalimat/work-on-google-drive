@@ -8,6 +8,7 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
 from googleapiclient.http import MediaIoBaseDownload
 import pandas as pd
+import threading, time
 
 class Api():
     """ Basic class of API clients """
@@ -47,14 +48,17 @@ class GoogleAPI(Api):
         """ Parent classes initialization """
         super().__init__()
 
-    def create(self, name):
+    def create(self, folderName, parentID=None):
         """ Create folder method """
-        file_metadata = {
-            'name': name,
+        body = {
+            'name': folderName,
             'mimeType': 'application/vnd.google-apps.folder',
+            'parents': [parentID]
         }
-        request = self.DRIVE.files().create(body=file_metadata).execute()
-        print("Create Complete")
+        if parentID:
+            body['parents'] = [parentID]
+        request = self.DRIVE.files().create(body=body).execute()
+        print(f"-> Create Complete with name: {body['name']} folder_id {body['parents']}")
         return request['id']
     
     def read(self, name):
@@ -106,7 +110,7 @@ class GoogleAPI(Api):
                 print("Unsupported file: {0}".format(itemName))
     
     def downloadFile(self, fileId, filePath):
-        print("-> Downloading file with id: {0} name: {1}".format(fileId, filePath))
+        print(f"-> Downloading file with id: {fileId} name: {filePath}")
         request = self.DRIVE.files().get_media(fileId=fileId)
         fh = io.FileIO(filePath, mode='wb')
         
