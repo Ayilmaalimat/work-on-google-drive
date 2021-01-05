@@ -10,6 +10,7 @@ from googleapiclient.http import MediaIoBaseDownload
 import pandas as pd
 import threading, time
 
+
 class Api():
     """ Basic class of API clients """
     def __init__(self):
@@ -41,6 +42,7 @@ class Api():
         self.DRIVE = build(self.API_NAME, self.API_VERSION, credentials=creds)
 
         return self
+
 
 class GoogleAPI(Api):
     """ Google Drive Class of API clients """
@@ -125,26 +127,20 @@ class GoogleAPI(Api):
             print("Download Complete!") 
         finally:
             fh.close()
+    
+    def loopDownload(self, fileId, folderName, interval):
+        while True:
+            self.download(fileId, folderName)
+            time.sleep(interval)
 
-    def backupFiles(self, fileId, hours):
-        from apscheduler.schedulers.background import BackgroundScheduler
-        import time
 
-        self.download(fileId, time.strftime('%d %b %y'))
-
-        try:
-            scheduler = BackgroundScheduler()
-            scheduler.add_job(self.download, 'interval', 
-                    args=(fileId, time.strftime('%d %b %y')), 
-                    hours=hours)
-            scheduler.start()
-            print('Press Ctrl+{0} to exit'.format('Break' if os.name == 'nt' else 'C'))
-
-            while True:
-                time.sleep(2)
-        except:
-            scheduler.shutdown() 
-
+    def backupFiles(self, fileId, seconds=0, minutes=0, hours=0, days=0):
+        folderName = time.strftime("%b %d %Y %H-%M-%S")
+        interval = seconds + minutes*60 + hours*60*60 + days*24*60*60
+        
+        t = threading.Thread(target=self.loopDownload, args=(fileId, folderName, interval))
+        t.start()
+        
 class Gspread(Api):
     """ Gspread Library Class of API clients """
     def __init__(self):

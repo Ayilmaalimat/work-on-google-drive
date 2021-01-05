@@ -13,7 +13,7 @@ def main():
 
     # google.download('1HnyeVqsIRZImsS4qzPuLXXx_cbgMFZzY', 'download')
 
-    # google.backupFiles('1HnyeVqsIRZImsS4qzPuLXXx_cbgMFZzY', 7)
+    # google.backupFiles('1HnyeVqsIRZImsS4qzPuLXXx_cbgMFZzY', seconds=7, minutes=3, hours=5, days=1)
 
     # gsp = Gspread().auth()
 
